@@ -41,7 +41,7 @@ RAMP_RATE = 250  # PWM units per second (adjust this value to tune ramp speed)
 MIN_RAMP_THRESHOLD = 15  # Only ramp if change is greater than this
 MIN_PWM_THRESHOLD = 15
 current_movement, prev_movement = 'stop', 'stop'
-movement_threshold = 25  # PWM difference threshold to distinguish turn from straight
+movement_threshold = 50  # PWM difference threshold to distinguish turn from straight
 
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
