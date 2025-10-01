@@ -333,7 +333,7 @@ def pid_control():
         set_motors(final_left_pwm, final_right_pwm)
         
         # Only print during active movement (not stop) and when encoders are moving
-        if (ramp_left_pwm != 0 or ramp_right_pwm != 0) and current_movement != 'stop' and (left_count > 0 or right_count > 0):
+        if ramp_left_pwm != 0 or ramp_right_pwm != 0:
             print(f"Mode: {current_movement}, (L_PWM, R_PWM)=({ramp_left_pwm:.2f},{ramp_right_pwm:.2f}), (L_Enc, R_Enc)=({left_count}, {right_count})")
         
         time.sleep(0.01)
