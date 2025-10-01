@@ -33,7 +33,7 @@ MAX_CORRECTION = 30  # Maximum PWM correction value
 
 # Motor calibration factors
 LEFT_MOTOR_FACTOR = 1.0   # Adjust if left motor is slower/faster
-RIGHT_MOTOR_FACTOR = 0.93  # Example: if right motor is 5% faster
+RIGHT_MOTOR_FACTOR = 0.915  # Example: if right motor is 5% faster
 
 # Global variables
 running = True
