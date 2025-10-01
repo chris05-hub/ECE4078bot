@@ -31,6 +31,10 @@ LINEAR_KP, LINEAR_KI, LINEAR_KD = 0, 0, 0
 ROTATION_KP, ROTATION_KI, ROTATION_KD = 0, 0, 0
 MAX_CORRECTION = 30  # Maximum PWM correction value
 
+# Motor calibration factors
+LEFT_MOTOR_FACTOR = 1.0   # Adjust if left motor is slower/faster
+RIGHT_MOTOR_FACTOR = 0.95  # Example: if right motor is 5% faster
+
 # Global variables
 running = True
 left_pwm, right_pwm = 0, 0
@@ -123,11 +127,11 @@ def set_motors(left, right):
     if right > 0:
         GPIO.output(RIGHT_MOTOR_IN1, GPIO.HIGH)
         GPIO.output(RIGHT_MOTOR_IN2, GPIO.LOW)
-        right_motor_pwm.ChangeDutyCycle(min(right, 100))
+        right_motor_pwm.ChangeDutyCycle(min(right * RIGHT_MOTOR_FACTOR, 100))
     elif right < 0:
         GPIO.output(RIGHT_MOTOR_IN1, GPIO.LOW)
         GPIO.output(RIGHT_MOTOR_IN2, GPIO.HIGH)
-        right_motor_pwm.ChangeDutyCycle(min(abs(right), 100))
+        right_motor_pwm.ChangeDutyCycle(min(abs(right) * RIGHT_MOTOR_FACTOR, 100))
     else:
         # when pwm = 0, implement Active Braking mode, better than putting duty cycle to 0 which may cause uneven stopping
         GPIO.output(RIGHT_MOTOR_IN1, GPIO.HIGH)
@@ -137,11 +141,11 @@ def set_motors(left, right):
     if left > 0:
         GPIO.output(LEFT_MOTOR_IN3, GPIO.HIGH)
         GPIO.output(LEFT_MOTOR_IN4, GPIO.LOW)
-        left_motor_pwm.ChangeDutyCycle(min(left, 100))
+        left_motor_pwm.ChangeDutyCycle(min(left * LEFT_MOTOR_FACTOR, 100))
     elif left < 0:
         GPIO.output(LEFT_MOTOR_IN3, GPIO.LOW)
         GPIO.output(LEFT_MOTOR_IN4, GPIO.HIGH)
-        left_motor_pwm.ChangeDutyCycle(min(abs(left), 100))
+        left_motor_pwm.ChangeDutyCycle(min(abs(left) * LEFT_MOTOR_FACTOR, 100))
     else:
         GPIO.output(LEFT_MOTOR_IN3, GPIO.HIGH)
         GPIO.output(LEFT_MOTOR_IN4, GPIO.HIGH)
@@ -232,10 +236,8 @@ def pid_control():
                 rotation_last_error = 0
                 
             elif current_movement == 'turn':
-                # Rotation movement PID with ROTATION_KP, ROTATION_KI, ROTATION_KD
-                # For rotation, we want both wheels to rotate at the same rate (magnitude)
-                # The error is the difference in their absolute encoder counts
-                error = abs(left_count) - abs(right_count)
+                # Enhanced rotation PID - focus on keeping wheels synchronized
+                error = left_count - right_count  # Direct difference, not absolute
                 
                 proportional = ROTATION_KP * error
                 rotation_integral += ROTATION_KI * error * dt
@@ -245,13 +247,12 @@ def pid_control():
                 correction = max(-MAX_CORRECTION, min(correction, MAX_CORRECTION))
                 rotation_last_error = error
                 
-                # Apply correction: if left is ahead, reduce left or increase right
-                # Determine which wheel is moving forward and which is backward
-                if left_pwm > 0:  # Left wheel forward, right wheel backward (turn right)
+                # Apply correction to keep wheels synchronized
+                if left_pwm > 0:  # Clockwise turn
                     target_left_pwm = left_pwm - correction
-                    target_right_pwm = right_pwm + correction  # right_pwm is negative, so this reduces magnitude
-                else:  # Left wheel backward, right wheel forward (turn left)
-                    target_left_pwm = left_pwm + correction  # left_pwm is negative, so this reduces magnitude
+                    target_right_pwm = right_pwm + correction
+                else:  # Counter-clockwise turn
+                    target_left_pwm = left_pwm + correction
                     target_right_pwm = right_pwm - correction
                 
                 # Reset linear PID state when turning
@@ -331,7 +332,7 @@ def pid_control():
         final_right_pwm = apply_min_threshold(ramp_right_pwm, MIN_PWM_THRESHOLD)
         set_motors(final_left_pwm, final_right_pwm)
         
-       # Change to this - only print during active movement (not stop)
+        # Only print during active movement (not stop) and when encoders are moving
         if (ramp_left_pwm != 0 or ramp_right_pwm != 0) and current_movement != 'stop' and (left_count > 0 or right_count > 0):
             print(f"Mode: {current_movement}, (L_PWM, R_PWM)=({ramp_left_pwm:.2f},{ramp_right_pwm:.2f}), (L_Enc, R_Enc)=({left_count}, {right_count})")
         
