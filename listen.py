@@ -331,7 +331,8 @@ def pid_control():
         final_right_pwm = apply_min_threshold(ramp_right_pwm, MIN_PWM_THRESHOLD)
         set_motors(final_left_pwm, final_right_pwm)
         
-        if (ramp_left_pwm != 0 or ramp_right_pwm != 0) and (left_count > 0 or right_count > 0): 
+       # Change to this - only print during active movement (not stop)
+        if (ramp_left_pwm != 0 or ramp_right_pwm != 0) and current_movement != 'stop' and (left_count > 0 or right_count > 0):
             print(f"Mode: {current_movement}, (L_PWM, R_PWM)=({ramp_left_pwm:.2f},{ramp_right_pwm:.2f}), (L_Enc, R_Enc)=({left_count}, {right_count})")
         
         time.sleep(0.01)
