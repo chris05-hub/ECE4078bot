@@ -77,29 +77,12 @@ def setup_gpio():
     right_motor_pwm.start(0)
 
 def left_encoder_callback(channel):
-    global left_count, prev_left_state
-    current_state = GPIO.input(LEFT_ENCODER)
-    
-    # Check for actual state change. Without this, false positive happens due to electrical noise
-    # After testing, debouncing not needed
-    if (prev_left_state is not None and current_state != prev_left_state):       
-        left_count += 1
-        prev_left_state = current_state
-    
-    elif prev_left_state is None:
-        # First reading
-        prev_left_state = current_state
+    global left_count
+    left_count += 1  # Just count, no state checking needed
 
 def right_encoder_callback(channel):
-    global right_count, prev_right_state, prev_right_time
-    current_state = GPIO.input(RIGHT_ENCODER)
-    
-    if (prev_right_state is not None and current_state != prev_right_state): 
-        right_count += 1
-        prev_right_state = current_state
-        
-    elif prev_right_state is None:
-        prev_right_state = current_state
+    global right_count
+    right_count += 1
     
 def reset_encoder():
     global left_count, right_count
