@@ -183,6 +183,10 @@ def pid_control():
     previous_left_target = 0
     previous_right_target = 0
     
+    # Encoder reset for turns
+    encoder_reset_interval = 0.5  # Reset encoders every 0.5 seconds during turns
+    last_encoder_reset_time = monotonic()
+    
     while running:          
         current_time = monotonic()
         dt = current_time - last_time
@@ -236,6 +240,13 @@ def pid_control():
                 rotation_last_error = 0
                 
             elif current_movement == 'turn':
+                # For turns, periodically reset encoders to prevent unbounded error accumulation
+                if current_time - last_encoder_reset_time > encoder_reset_interval:
+                    reset_encoder()
+                    last_encoder_reset_time = current_time
+                    rotation_integral = 0  # Also reset integral when encoders reset
+                    rotation_last_error = 0
+                
                 # Enhanced rotation PID - focus on keeping wheels synchronized
                 error = left_count - right_count
                 
@@ -247,31 +258,25 @@ def pid_control():
                 correction = max(-MAX_CORRECTION, min(correction, MAX_CORRECTION))
                 rotation_last_error = error
                 
-                # For CCW turns (negative left_pwm), we need to think about the correction differently
-                # Positive error means left is ahead, so we need to:
-                # - slow down left motor (make it less negative = add to negative value)
-                # - speed up right motor (make it more positive = add to positive value)
-                
+                # Apply correction based on turn type
                 if left_pwm >= 0 and right_pwm >= 0:
-                    # Both motors forward - standard arc turn correction
+                    # Both motors forward - arc turn
+                    # Positive error (left ahead) = slow left, speed up right
                     target_left_pwm = left_pwm - correction
                     target_right_pwm = right_pwm + correction
                 elif left_pwm <= 0 and right_pwm <= 0:
-                    # Both motors backward - standard arc turn correction
+                    # Both motors backward - arc turn
+                    # Positive error (left ahead) = slow left, speed up right
                     target_left_pwm = left_pwm - correction
                     target_right_pwm = right_pwm + correction
                 elif left_pwm < 0 and right_pwm > 0:
-                    # CCW spot turn: left backward, right forward
-                    # Positive error (left ahead) means:
-                    # - Reduce left motor magnitude (add correction to negative value)
-                    # - Reduce right motor magnitude (subtract correction from positive value)
+                    # CCW spot turn: left backward (-), right forward (+)
+                    # Positive error (left ahead) = make left less negative, make right less positive
                     target_left_pwm = left_pwm + correction
                     target_right_pwm = right_pwm - correction
                 else:
-                    # CW spot turn: left forward, right backward
-                    # Positive error (left ahead) means:
-                    # - Reduce left motor magnitude (subtract correction)
-                    # - Increase right motor magnitude (add correction to negative value)
+                    # CW spot turn: left forward (+), right backward (-)
+                    # Positive error (left ahead) = make left less positive, make right less negative
                     target_left_pwm = left_pwm - correction
                     target_right_pwm = right_pwm + correction
                 
@@ -286,6 +291,7 @@ def pid_control():
                 rotation_integral = 0
                 rotation_last_error = 0
                 reset_encoder()
+                last_encoder_reset_time = current_time
                 target_left_pwm = left_pwm
                 target_right_pwm = right_pwm
         
