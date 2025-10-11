@@ -237,27 +237,43 @@ def pid_control():
                 
             elif current_movement == 'turn':
                 # Enhanced rotation PID - focus on keeping wheels synchronized
-                error = left_count - right_count  # Direct difference, not absolute
+                error = left_count - right_count
                 
                 proportional = ROTATION_KP * error
                 rotation_integral += ROTATION_KI * error * dt
-                rotation_integral = max(-MAX_CORRECTION, min(rotation_integral, MAX_CORRECTION))  # Anti-windup
+                rotation_integral = max(-MAX_CORRECTION, min(rotation_integral, MAX_CORRECTION))
                 derivative = ROTATION_KD * (error - rotation_last_error) / dt if dt > 0 else 0
                 correction = proportional + rotation_integral + derivative
                 correction = max(-MAX_CORRECTION, min(correction, MAX_CORRECTION))
                 rotation_last_error = error
                 
-                # Determine turn direction from relative motor speeds
-                # Positive left_pwm - right_pwm = turning CW (right motor faster/more positive)
-                # Negative left_pwm - right_pwm = turning CCW (left motor faster/more positive)
-                turn_direction = left_pwm - right_pwm
+                # For CCW turns (negative left_pwm), we need to think about the correction differently
+                # Positive error means left is ahead, so we need to:
+                # - slow down left motor (make it less negative = add to negative value)
+                # - speed up right motor (make it more positive = add to positive value)
                 
-                if turn_direction > 0:  # Clockwise turn (right motor dominant)
+                if left_pwm >= 0 and right_pwm >= 0:
+                    # Both motors forward - standard arc turn correction
                     target_left_pwm = left_pwm - correction
                     target_right_pwm = right_pwm + correction
-                else:  # Counter-clockwise turn (left motor dominant)
+                elif left_pwm <= 0 and right_pwm <= 0:
+                    # Both motors backward - standard arc turn correction
+                    target_left_pwm = left_pwm - correction
+                    target_right_pwm = right_pwm + correction
+                elif left_pwm < 0 and right_pwm > 0:
+                    # CCW spot turn: left backward, right forward
+                    # Positive error (left ahead) means:
+                    # - Reduce left motor magnitude (add correction to negative value)
+                    # - Reduce right motor magnitude (subtract correction from positive value)
                     target_left_pwm = left_pwm + correction
                     target_right_pwm = right_pwm - correction
+                else:
+                    # CW spot turn: left forward, right backward
+                    # Positive error (left ahead) means:
+                    # - Reduce left motor magnitude (subtract correction)
+                    # - Increase right motor magnitude (add correction to negative value)
+                    target_left_pwm = left_pwm - correction
+                    target_right_pwm = right_pwm + correction
                 
                 # Reset linear PID state when turning
                 linear_integral = 0
