@@ -278,7 +278,6 @@ def pid_control():
                 # Reset linear PID state when turning
                 linear_integral = 0
                 linear_last_error = 0
-                print(f"Turn dir: {'CW' if turn_direction > 0 else 'CCW'}, error={error:.2f}, correction={correction:.2f}")
                 
             else:
                 # Stop condition - reset all PID states
