@@ -247,11 +247,15 @@ def pid_control():
                 correction = max(-MAX_CORRECTION, min(correction, MAX_CORRECTION))
                 rotation_last_error = error
                 
-                # Apply correction to keep wheels synchronized
-                if left_pwm > 0:  # Clockwise turn
+                # Determine turn direction from relative motor speeds
+                # Positive left_pwm - right_pwm = turning CW (right motor faster/more positive)
+                # Negative left_pwm - right_pwm = turning CCW (left motor faster/more positive)
+                turn_direction = left_pwm - right_pwm
+                
+                if turn_direction > 0:  # Clockwise turn (right motor dominant)
                     target_left_pwm = left_pwm - correction
                     target_right_pwm = right_pwm + correction
-                else:  # Counter-clockwise turn
+                else:  # Counter-clockwise turn (left motor dominant)
                     target_left_pwm = left_pwm + correction
                     target_right_pwm = right_pwm - correction
                 
